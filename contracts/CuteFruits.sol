@@ -5,50 +5,43 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
-contract CuteFruits is ERC721, ERC721URIStorage, Ownable {
-    string private NFTsCollectionName = "CuteFruits";
-    string private NFTsAcronym = "CFU";
-    // nft's counter
-    uint256 private _tokenIdCounter;
-    // dictionary key: string, value: uint8
-    mapping(string => uint8) private nftURIs;
+contract CuteFruits is ERC721URIStorage, Ownable {
+    uint256 public constant MAX_FRUITS = 8;
+    uint256 public constant fruitPrice = 80000000000000; //0.00008 ETH
+    string private constant fruitBaseUrl = "ipfs://QmXZ6BML982e6xqCv7ywhKREwsgBjiiuRtaLxgy5rTX6Ky/";
+    uint256 private _tokenIdCounter; // nft's counter
 
-    constructor() ERC721(NFTsCollectionName, NFTsAcronym) Ownable(msg.sender)
-    {}
+    constructor() ERC721("CuteFruits",  "CFU") Ownable(msg.sender){}
 
-    function payToMint(address recipient, string memory metadataURI) public payable returns (uint256) {
-        require(!isContentOwned(metadataURI), 'NFT already minted!');
-        require(isPaymentProfitable(), 'Need to pay up!');
-        uint256 newItemId = _tokenIdCounter;
-        _tokenIdCounter += 1;
-        nftURIs[metadataURI] = 1;
-        _mint(recipient, newItemId);
-        _setTokenURI(newItemId, metadataURI);
-        return newItemId;
-    }
-
+    // There is no way to set new baseUri because super class method is marked as view
+    // That's why base url is constant
     function _baseURI() internal pure override returns (string memory) {
-        return "ipfs://";
+        return fruitBaseUrl;
     }
 
-    function isContentOwned(string memory uri) public view returns (bool) {
-        return nftURIs[uri] == 1;
+    // WRITE Functions
+    function mintFruit(uint numberOfTokens) public payable {
+        require((_tokenIdCounter + numberOfTokens) <= MAX_FRUITS, "Purchase would exceed max supply of fruits");
+        require((fruitPrice * numberOfTokens) <= msg.value, "Ether value sent is not correct");
+        for (uint i = 0; i < numberOfTokens; i++) {
+            if (totalSupply() < MAX_FRUITS) {
+                uint256 newTokenId = _tokenIdCounter + 1;
+                _safeMint(msg.sender, newTokenId);
+                _tokenIdCounter = newTokenId;
+                _setTokenURI(newTokenId, Strings.toString(newTokenId));
+            }
+        }
     }
 
-    function count() public view returns (uint256) {
+    function totalSupply() public view returns (uint256) {
         return _tokenIdCounter;
     }
 
-    function isPaymentProfitable() private view returns (bool){
-        return msg.value >= 0.05 ether;
-    }
-
-    function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
-        return super.tokenURI(tokenId);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721URIStorage) returns (bool) {
-        return super.supportsInterface(interfaceId);
+    function withdraw() public onlyOwner {
+        uint balance = address(this).balance;
+        address payable owner = payable(owner());
+        owner.transfer(balance);
     }
 }

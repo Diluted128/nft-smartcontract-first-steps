@@ -6,20 +6,17 @@ const API_KEY = process.env.API_KEY;
 const privateKey = process.env.PRIVATE_KEY
 
 const contract = require("../artifacts/contracts/CuteFruits.sol/CuteFruits.json");
-const contractAddress = '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9'
+const contractAddress = '0xB9D075aD847Bd64906805AD91241fC564Ab4d125'
 const abi = contract.abi
-
-const tokenUri = "https://gateway.pinata.cloud/ipfs/QmVqPk1zQs1y6NX9CeEfsGfEJZmtxfbjziEy8vzFbS6gUh"
 
 // Call mintNFT function
 const mintNFT = async () => {
     const provider = new ethers.AlchemyProvider('sepolia', API_KEY)
     const signer = new ethers.Wallet(privateKey, provider)
     const myNftContract = new ethers.Contract(contractAddress, abi, signer)
-    let nftTxn = await myNftContract.payToMint(signer.address, tokenUri)
+    let nftTxn = await myNftContract.mintFruit(8, { value: ethers.parseEther("0.004") });
     await nftTxn.wait()
     console.log(`NFT Minted! Check it out at: https://sepolia.etherscan.io/tx/${nftTxn.hash}`)
-    console.log("NFT " + tokenUri + " has been minted.");
 }
 
 mintNFT()
